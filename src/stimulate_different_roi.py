@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import time as tm
 import re
-from plot_data import plot_pattern
 import sys
 from run_simulation import run_simulation
 from epistim_model import EpileptorStim
@@ -125,9 +124,9 @@ epileptors.Kvf = np.ones(n_regions) * (-0.085)  # ?
 x0_vector = np.ones(len(roi)) * -2.5
 ez_idx = [roi.index(ez) for ez in EZ]
 x0_vector[ez_idx] = -1.65
-epileptors.x0 = np.ones(n_regions)*(-2.2)  #x0_vector close to critical threshold
+epileptors.x0 = np.ones(n_regions)*(-2.3)  #x0_vector close to critical threshold
 # epileptors.threshold = np.exp(-x0_vector) - 2.95 # TODO this is adjustable, how best to set it ?
-epileptors.threshold = 20 / (1 + np.exp(10*(x0_vector + 2.1))) + 1 # sigmoid function centred around 2.1
+epileptors.threshold = 20 / (1 + np.exp(10*(x0_vector + 2.1))) + 1.13 # sigmoid function centred around 2.1
 assert np.all(epileptors.threshold > 0)  # check thresholds>0, otherwise seizure starts automatically
 
 # %% Choose stimulation parameters and run first simulation
@@ -137,7 +136,7 @@ stimulation_parameters = iterable_params[stim_index]  # take the first stimulati
 ic = [-1.4, -9.6, 2.97, 0.0]
 init_conditions = np.repeat(ic, len(roi)).reshape((1, len(ic), len(roi), 1))
 ttavg1 = run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint, 
-                        mon_tavg, bip_names, bip_gain_prior_norm, roi, plot=False)
+                        mon_tavg, bip_names, bip_gain_prior_norm, roi, pre_stim_duration=8, plot=False)
 #%% Plot results
 time, tavg = ttavg1[0]
 
@@ -213,7 +212,7 @@ stim_index = 342 + 2 # choose which stimulation to run
 stimulation_parameters = iterable_params[stim_index]  # take the first stimulation parameters set
 init_conditions=tavg[-1][np.newaxis, :, :, :]  # continue from previous simulation
 ttavg3 = run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint, 
-                        mon_tavg, bip_names, bip_gain_prior_norm, roi, plot=False)
+                        mon_tavg, bip_names, bip_gain_prior_norm, roi, post_stim_duration=30, plot=False)
 
 #%% Plot results
 time, tavg = ttavg3[0]
@@ -244,19 +243,44 @@ if plot:
     for i in range(n_subplots):
         axs[i].plot(time, tavg[:, i, idx_roi, 0])
     axs[3].axhline(epileptors.threshold[idx_roi], 0, time[-1])
+    axs[3].set_ylim([0, 1.7])
     # axs[4].plot(sim.stimulus.time[0], sim.stimulus.temporal_pattern[0] * sim.stimulus.spatial_pattern[idx_roi])
     plt.suptitle(f'{roi[idx_roi]}, maximum m = {tavg[:, 3, idx_roi, 0].max():.2f}')
     plt.show()
 
 # #%% TODO combine all three simulations together and plot the entire timeseries
-time, tavg = ttavg3[0]
-# time2, tavg2 = ttavg2[0]
-# time3, tavg3 = ttavg3[0]
+time1, tavg1 = ttavg1[0]
+time2, tavg2 = ttavg2[0]
+time3, tavg3 = ttavg3[0]
+
+time = np.concatenate((time1, time2 + time1[-1], time3 + time1[-1] + time2[-1]))
+xtavg = np.concatenate((tavg1[:, 0, :, 0].T, tavg2[:, 0, :, 0].T, tavg3[:, 0, :, 0].T), axis=1)
+ytavg = np.concatenate((tavg1[:, 1, :, 0].T, tavg2[:, 1, :, 0].T, tavg3[:, 1, :, 0].T), axis=1)
+mtavg = np.concatenate((tavg1[:, 3, :, 0].T, tavg2[:, 3, :, 0].T, tavg3[:, 3, :, 0].T), axis=1)
+ztavg = np.concatenate((tavg1[:, 2, :, 0].T, tavg2[:, 2, :, 0].T, tavg3[:, 2, :, 0].T), axis=1)
+idx_roi = roi.index('Right-Amygdala')
+n_subplots = 3
+f, axs = plt.subplots(n_subplots, 1, sharex='col', figsize=(20, 5))
+axs[0].plot(time, xtavg[idx_roi], color='purple', linewidth=2)
+# axs[1].plot(time, ytavg[idx_roi], color='orange')
+axs[1].plot(time, ztavg[idx_roi], color='purple', linewidth=2)
+axs[2].plot(time, mtavg[idx_roi], color='purple', linewidth=2)
+axs[2].axhline(epileptors.threshold[idx_roi], 0, time[-1], color='black', linestyle='--')
+axs[2].set_ylim([0, 1.7])
+axs[0].set_ylabel('x1', fontsize=25)
+axs[1].set_ylabel('z', fontsize=25)
+axs[2].set_ylabel('m', fontsize=25)
+axs[2].set_xlabel('Time (ms)', fontsize=25)
+# axs[4].plot(sim.stimulus.time[0], sim.stimulus.temporal_pattern[0] * sim.stimulus.spatial_pattern[idx_roi])
+plt.suptitle(f'{roi[idx_roi]} simulation', fontsize=25)
+plt.tight_layout()
+plt.show()
+
 
 # Save all these simulation results
 save = False
 if save:
-    np.savez(f'stim_different_roi_{patients[pid]}_stim{stim_index-2}-{stim_index}.npz', 
+    np.savez(f'../stim_different_roi_{patients[pid]}_stim{stim_index-2}-{stim_index}_3.npz', 
             time1=ttavg1[0][0], tavg1=ttavg1[0][1], 
             time2=ttavg2[0][0], tavg2=ttavg2[0][1],
             time3=ttavg3[0][0], tavg3=ttavg3[0][1])

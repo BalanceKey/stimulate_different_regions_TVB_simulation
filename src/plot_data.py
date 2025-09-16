@@ -23,12 +23,13 @@ def plot_pattern(pattern_object, roi):
     plt.show()
 
 
-def plot_SEEG_timeseries(t, y, ch_names, seeg_info=None, scaleplt=0.002):
+def plot_SEEG_timeseries(t, y, selected_ch_names, all_ch_names, seeg_info=None, scaleplt=0.002, figsize=(40, 80)):
     '''Plots all SEEG timeseries'''
-    fig = plt.figure(figsize=(40, 80))
+    fig = plt.figure(figsize=figsize)
 
-    for ind, ich in enumerate(ch_names):
-        plt.plot(t, scaleplt * (y[ind, :]) + ind, 'blue', lw=0.5);
+    for ind, ich in enumerate(selected_ch_names):
+        ch_idx = all_ch_names.index(ich)
+        plt.plot(t, scaleplt * (y[ch_idx, :]) + ind, 'blue', lw=0.5)
 
     if seeg_info is not None:
         vlines = [seeg_info['onset'], seeg_info['offset']]
@@ -36,9 +37,9 @@ def plot_SEEG_timeseries(t, y, ch_names, seeg_info=None, scaleplt=0.002):
             plt.axvline(x, color='DeepPink', lw=3)
 
     plt.xticks(fontsize=26)
-    plt.ylim([-1, len(ch_names) + 0.5])
+    plt.ylim([-1, len(selected_ch_names) + 0.5])
     plt.xlim([t[0], t[-1]])
-    plt.yticks(np.arange(len(ch_names)), ch_names, fontsize=26)
+    plt.yticks(np.arange(len(selected_ch_names)), selected_ch_names, fontsize=26)
     plt.gcf().subplots_adjust(left=0.2)
     plt.gcf().subplots_adjust(top=0.97)
     plt.xlabel('Time', fontsize=50)

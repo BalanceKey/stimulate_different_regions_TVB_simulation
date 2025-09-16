@@ -40,7 +40,8 @@ def _numba_dfun(y, c_pop, x0, Iext, a, b, tt, Kvf, c, d, r, r2, Ks, Kf, modifica
     else:
         #ydot[0] = slope[0] + 0.6 * (y[2] - 4.0) ** 2
         ydot[0] = y[3] + 0.6 * (y[2] - 4.0) ** 2
-    ydot[0] = tt[0] * (y[1] - y[2] + Iext[0] + Istim[0] * 5 + Kvf[0] * c_pop1 + ydot[0] * y[0])
+    # ydot[0] = tt[0] * (y[1] - y[2] + Iext[0] + Istim[0] * 5 + Kvf[0] * c_pop1 + ydot[0] * y[0])
+    ydot[0] = tt[0] * (y[1] - y[2] + Iext[0] + Istim[0] * 25 + Kvf[0] * c_pop1 + ydot[0] * y[0])
     ydot[1] = tt[0] * (c[0] - d[0] * y[0] ** 2 - y[1])
 
     # energy
@@ -59,7 +60,7 @@ def _numba_dfun(y, c_pop, x0, Iext, a, b, tt, Kvf, c, d, r, r2, Ks, Kf, modifica
 
     ydot[2] = tt[0] * (r[0] * (h - y[2] + Ks[0] * c_pop1))
 
-    ydot[3] = tt[0] * r2[0]*(-0.1 * y[3] + abs(Istim[0])*42 + Kf[0] * c_pop3)
+    ydot[3] = tt[0] * r2[0]*(-0.05 * y[3] + abs(Istim[0])*35 + Kf[0] * c_pop3)
 
 class EpileptorStim(ModelNumbaDfun):
     r"""

@@ -4,6 +4,7 @@ Combine all simulations together and plot the results at the SEEG level
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
+import colorednoise as cn
 import sys
 sys.path.append('/Users/dollomab/MyProjects/Stimulation/VirtualEpilepsySurgery/VEP/core/')
 import vep_prepare
@@ -15,7 +16,7 @@ patients = {1: 'sub-603cf699f88f', 2: 'sub-2ed87927ff76', 3: 'sub-0c7ab65949e1',
 stim_index = 344
 
 
-data_path = f'../stim_different_roi_{patients[pid]}_stim{stim_index-2}-{stim_index}_2.npz'
+data_path = f'../stim_different_roi_{patients[pid]}_stim{stim_index-2}-{stim_index}_4.npz'
 data = np.load(data_path, allow_pickle=True)
 tavg1 = data['tavg1']
 tavg2 = data['tavg2']
@@ -110,15 +111,26 @@ ch_names = [ "B1-2", "B2-3", "B4-5", "B5-6", "B6-7",
          "A8-9", "A9-10", 
          "Im1-2", "Im3-4", "Im5-6", "Im6-7",
          "Ia1-2","Ia3-4", "Ia5-6", "Ia6-7",]
+
+beta = 1  # the exponent
+noise1 = cn.powerlaw_psd_gaussian(beta, y.shape)
+beta = 2  # the exponent
+noise2 = cn.powerlaw_psd_gaussian(beta, y.shape)
+beta = 3  # the exponent
+noise3 = cn.powerlaw_psd_gaussian(beta, y.shape)
+y_new = y + noise1*0.2 + noise2 * 0.1
+
 scaleplt = 0.2
 plt.figure(figsize=(20, 20), tight_layout=True)
 for i in range(len(ch_names)):
     ch_idx = bip_names.index(ch_names[i])
-    plt.plot(time, (y[ch_idx, :] - y[ch_idx, 0]) * scaleplt + i, 'blue', linewidth=1)
+    # plt.plot(time, (y[ch_idx, :] - y[ch_idx, 0]) * scaleplt + i, 'blue', linewidth=1)
+    plt.plot(time, (y_new[ch_idx, :] - y_new[ch_idx, 0]) * scaleplt + i, 'blue', linewidth=1)
 plt.yticks(np.arange(len(ch_names)), ch_names, fontsize=26)
 plt.xlim([time[0], time[-1]])
-plt.ylim([-2, len(ch_names) + 1])
-plt.title(f'SEEG signals - Bipolar montage - Patient {patients[pid]})')
+plt.ylim([-1, len(ch_names) + 1])
+plt.title(f'Simulated timeseries', fontsize=50, fontweight='bold')
 plt.xlabel('Time', fontsize=50)
 plt.ylabel('Electrodes', fontsize=50)
 plt.show()
+

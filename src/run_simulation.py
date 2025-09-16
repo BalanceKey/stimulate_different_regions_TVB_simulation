@@ -2,19 +2,19 @@ from tvb.simulator.lab import *
 import numpy as np
 import time as tm
 import matplotlib.pyplot as plt
+from plot_data import plot_pattern
 
-def run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint, mon_tavg, bip_names, bip_gain_prior_norm, roi, plot=False):
+def run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint, mon_tavg, bip_names, bip_gain_prior_norm, roi, pre_stim_duration=2, post_stim_duration=2, plot=False):
     print(f'Stimulating with parameters: {stimulation_parameters}')
 
     sfreq = stimulation_parameters['sfreq']/4                         # how many steps there are in one second
-    onset = 2 * sfreq                                                 # stimulation onset
+    onset = pre_stim_duration * sfreq                                 # stimulation onset
     stim_length = stimulation_parameters['duration'] * sfreq + onset  # stimulation duration
     T = 1 / stimulation_parameters['freq'] * sfreq                    # pulse repetition period [s]
     tau = stimulation_parameters['tau']/1000000 * sfreq               # pulse duration, number of steps [microsec]
     I = stimulation_parameters['amp']                                 # pulse intensity [mA]
 
-    simulation_length = stim_length + 4 * sfreq
-    assert stim_length < simulation_length
+    simulation_length = stim_length + post_stim_duration * sfreq
 
     class vector1D(equations.DiscreteEquation):
         equation = equations.Final(default="emp")

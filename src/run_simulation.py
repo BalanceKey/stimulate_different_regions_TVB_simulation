@@ -5,6 +5,26 @@ import matplotlib.pyplot as plt
 from plot_data import plot_pattern
 
 def run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint, mon_tavg, bip_names, bip_gain_prior_norm, roi, pre_stim_duration=2, post_stim_duration=2, plot=False):
+    ''' Run a TVB simulation with given stimulation parameters and return the time-averaged monitor data.
+    Args:
+        stimulation_parameters (dict): Dictionary containing stimulation parameters such as 'sfreq', 'duration', 'freq', 'tau', 'amp', and 'choi'.  
+        init_conditions (list): Initial conditions for the simulation.
+        dt (float): Time step for the simulation.
+        epileptors: The neural mass model to be used in the simulation.
+        con: The connectivity matrix for the simulation.
+        coupl: The coupling function for the simulation.
+        heunint: The integrator to be used in the simulation.
+        mon_tavg: The monitor to record time-averaged data.
+        bip_names (list): List of bipolar channel names.
+        bip_gain_prior_norm (list): List of normalized gain matrices for each bipolar channel.
+        roi (list): List of regions of interest.
+        pre_stim_duration (int, optional): Duration before stimulation onset in seconds. Default is 2.
+        post_stim_duration (int, optional): Duration after stimulation offset in seconds. Default is 2.
+        plot (bool, optional): Whether to plot the gain matrix for the stimulation channel. Default is False.
+    Returns:
+        ttavg: Time-averaged monitor data from the simulation.
+    '''
+    
     print(f'Stimulating with parameters: {stimulation_parameters}')
 
     sfreq = stimulation_parameters['sfreq']/4                         # how many steps there are in one second

@@ -24,9 +24,12 @@ plot = False
 emp_stim_1 = 342
 emp_stim_2 = emp_stim_1 + 1
 emp_stim_3 = emp_stim_1 + 2
+emp_stim_4 = emp_stim_1 + 3
+emp_stim_5 = emp_stim_1 + 4
 # stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3]  # indices of the stimulations to run in sequence
 
-stimulation_indexes = [emp_stim_3, emp_stim_2, emp_stim_1]  # indices of the stimulations to run in sequence
+# stimulation_indexes = [emp_stim_3, emp_stim_2, emp_stim_1]  # indices of the stimulations to run in sequence
+stimulation_indexes = [emp_stim_5, emp_stim_4, emp_stim_3]  # indices of the stimulations to run in sequence
 
 
 subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/patients/{patients[pid]}/vep'
@@ -262,7 +265,10 @@ xtavg = np.concatenate((tavg1[:, 0, :, 0].T, tavg2[:, 0, :, 0].T, tavg3[:, 0, :,
 ytavg = np.concatenate((tavg1[:, 1, :, 0].T, tavg2[:, 1, :, 0].T, tavg3[:, 1, :, 0].T), axis=1)
 mtavg = np.concatenate((tavg1[:, 3, :, 0].T, tavg2[:, 3, :, 0].T, tavg3[:, 3, :, 0].T), axis=1)
 ztavg = np.concatenate((tavg1[:, 2, :, 0].T, tavg2[:, 2, :, 0].T, tavg3[:, 2, :, 0].T), axis=1)
+
+
 idx_roi = roi.index('Right-Amygdala')
+idx_roi = roi.index('Right-STS-posterior')
 n_subplots = 3
 f, axs = plt.subplots(n_subplots, 1, sharex='col', figsize=(20, 5))
 axs[0].plot(time, xtavg[idx_roi], color='purple', linewidth=2)
@@ -278,6 +284,16 @@ axs[2].set_xlabel('Time (ms)', fontsize=25)
 # axs[4].plot(sim.stimulus.time[0], sim.stimulus.temporal_pattern[0] * sim.stimulus.spatial_pattern[idx_roi])
 plt.suptitle(f'{roi[idx_roi]} simulation {stimulation_indexes[0]}_{stimulation_indexes[1]}_{stimulation_indexes[2]}', fontsize=25)
 plt.tight_layout()
+plt.show()
+
+#%% TODO combine all three simulations together and plot the entire timeseries
+plt.figure(figsize=(10, 15), tight_layout=True)
+for i in range(len(roi)):
+    plt.plot(time, xtavg[i, :] + i + 1, 'blue', linewidth=0.5)
+plt.yticks(np.arange(len(roi)), roi)
+plt.xlim([time[0], time[-1]])
+plt.ylim([-2, len(roi) + 1])
+plt.title(f'Stimulation order: {stimulation_indexes[0]} -> {stimulation_indexes[1]} -> {stimulation_indexes[2]}', fontsize=20)
 plt.show()
 
 

@@ -20,21 +20,31 @@ patients = {1: 'sub-603cf699f88f', 2: 'sub-2ed87927ff76', 3: 'sub-0c7ab65949e1',
 
 pid = 3
 plot = False
-emp_stim_1 = 342
-emp_stim_2 = emp_stim_1 + 1
-emp_stim_3 = emp_stim_1 + 2
-# stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3]  # indices of the stimulations to run in sequence
 
-emp_stim_1 = 340
-emp_stim_2 = 341
-emp_stim_3 = 342
-emp_stim_4 = 343
-emp_stim_5 = 344
-# stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4, emp_stim_5]  # indices of the stimulations to run in sequence
-# stimulation_indexes = [emp_stim_3, emp_stim_1, emp_stim_5, emp_stim_2, emp_stim_4]  # indices of the stimulations to run in sequence
-# stimulation_indexes = [emp_stim_4, emp_stim_2, emp_stim_1, emp_stim_3, emp_stim_5]  # indices of the stimulations to run in sequence
-# stimulation_indexes = [emp_stim_3, emp_stim_2, emp_stim_4, emp_stim_1, emp_stim_5]  # indices of the stimulations to run in sequence
-stimulation_indexes = [emp_stim_4, emp_stim_1, emp_stim_3, emp_stim_2, emp_stim_5]  # indices of the stimulations to run in sequence
+if pid == 3:
+    # emp_stim_1 = 342
+    # emp_stim_2 = emp_stim_1 + 1
+    # emp_stim_3 = emp_stim_1 + 2
+    # stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3]  # indices of the stimulations to run in sequence
+    emp_stim_1 = 340
+    emp_stim_2 = 341
+    emp_stim_3 = 342
+    emp_stim_4 = 343
+    emp_stim_5 = 344
+    stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4, emp_stim_5]  # indices of the stimulations to run in sequence
+    # stimulation_indexes = [emp_stim_3, emp_stim_1, emp_stim_5, emp_stim_2, emp_stim_4]  # indices of the stimulations to run in sequence
+    # stimulation_indexes = [emp_stim_4, emp_stim_2, emp_stim_1, emp_stim_3, emp_stim_5]  # indices of the stimulations to run in sequence
+    # stimulation_indexes = [emp_stim_3, emp_stim_2, emp_stim_4, emp_stim_1, emp_stim_5]  # indices of the stimulations to run in sequence
+    # stimulation_indexes = [emp_stim_4, emp_stim_1, emp_stim_3, emp_stim_2, emp_stim_5]  # indices of the stimulations to run in sequence
+elif pid == 5:
+    emp_stim_1 = 234
+    emp_stim_2 = 235
+    emp_stim_3 = 236
+    emp_stim_4 = 237
+    stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4]  # indices of the stimulations to run in sequence
+else:
+    stimulation_indexes = [0]  # placeholder for other patients
+
 
 subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/patients/{patients[pid]}/vep'
 # subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/stimulated_patients/{patients[pid]}/vep'
@@ -69,7 +79,9 @@ for i in range(0, df.shape[0]):
                                 'duration': float(df['duration'][stim_index]),  # seconds
                                 'tau': float(df['pulse_width'][stim_index]),  # microseconds
                                 'sfreq': 512,  # Hz
-                                'stim_index': stim_index
+                                'stim_index': stim_index,
+                                'stim_onset_t': float(df['onset'][stim_index]),  # seconds
+                                'stim_offset_t': float(df['offset'][stim_index])  # seconds
                                 }
     else:
         stimulation_parameters = {'choi': channels[0] + channel_nr[0] + '-' + channel_nr[1],
@@ -78,7 +90,9 @@ for i in range(0, df.shape[0]):
                                 'duration': float(df['duration'][stim_index]),  # seconds
                                 'tau': float(df['pulse_width'][stim_index]),  # microseconds
                                 'sfreq': 512,  # Hz
-                                'stim_index': stim_index
+                                'stim_index': stim_index,
+                                'stim_onset_t': float(df['onset'][stim_index]),  # seconds
+                                'stim_offset_t': float(df['offset'][stim_index])  # seconds
                                 }
     iterable_params.append(stimulation_parameters)
 
@@ -143,15 +157,17 @@ epileptors.x0 = np.ones(n_regions)*(-2.3)  #x0_vector close to critical threshol
 epileptors.threshold = 20 / (1 + np.exp(10*(x0_vector + 2.1))) + 1.13 # sigmoid function centred around 2.1
 assert np.all(epileptors.threshold > 0)  # check thresholds>0, otherwise seizure starts automatically
 
-# Make a loop over the stimulition_indexes
+# Make a loop over the stimulation_indexes
 ttavg_all = []
-tavg = None
+prev_stimulation_onset_t, prev_stimulation_offset_t = None, None
 for i, stim_idx in enumerate(stimulation_indexes):
     print(f'Stimulation index to run: {stim_idx}')
     print(f'Stimulation parameters: {iterable_params[stim_idx]}')
 
     # Choose stimulation parameters and run simulation
     stimulation_parameters = iterable_params[stim_idx]
+    stimulation_onset_t = stimulation_parameters['stim_onset_t']
+    stimulation_offset_t = stimulation_parameters['stim_offset_t']
 
     if i == 0:
         ic = [-1.4, -9.6, 2.97, 0.0]
@@ -160,14 +176,17 @@ for i, stim_idx in enumerate(stimulation_indexes):
         time, tavg = ttavg[0]
         init_conditions=tavg[-1][np.newaxis, :, :, :]  # continue from previous simulation
         
+    pre_stim_duration=8 if i==0 else (stimulation_onset_t - prev_stimulation_offset_t)     # time between stimulations
+    post_stim_duration=30 if i==len(stimulation_indexes)-1 else 0   # only add post-stim duration for last stimulation
     ttavg = run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint,
                             mon_tavg, bip_names, bip_gain_prior_norm, roi, 
-                            pre_stim_duration=8 if i==0 else 2,  # TODO determine pre and post stim durations more precisely!!!!!
-                            post_stim_duration=30 if i==len(stimulation_indexes)-1 else 2,
+                            pre_stim_duration=8 if i==0 else (stimulation_onset_t - prev_stimulation_onset_t), 
+                            post_stim_duration=30 if i==len(stimulation_indexes)-1 else 0,
                             plot=False)
 
     ttavg_all.append(ttavg)
-
+    prev_stimulation_onset_t, prev_stimulation_offset_t = stimulation_onset_t, stimulation_offset_t
+    
     if plot:
         time, tavg = ttavg[0]
         plt.figure(figsize=(10, 15), tight_layout=True)
@@ -203,8 +222,9 @@ mtavg = np.concatenate((tavg1[:, 3, :, 0].T, tavg2[:, 3, :, 0].T, tavg3[:, 3, :,
 ztavg = np.concatenate((tavg1[:, 2, :, 0].T, tavg2[:, 2, :, 0].T, tavg3[:, 2, :, 0].T, tavg4[:, 2, :, 0].T, tavg5[:, 2, :, 0].T), axis=1)
 
 
-idx_roi = roi.index('Right-Amygdala')
-# idx_roi = roi.index('Right-Temporal-pole')
+# idx_roi = roi.index('Right-Amygdala')
+idx_roi = roi.index('Right-Temporal-pole')
+idx_roi = roi.index('Right-Hippocampus-anterior')
 n_subplots = 3
 f, axs = plt.subplots(n_subplots, 1, sharex='col', figsize=(20, 5))
 axs[0].plot(time, xtavg[idx_roi], color='purple', linewidth=2)

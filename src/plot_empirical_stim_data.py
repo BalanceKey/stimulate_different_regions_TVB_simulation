@@ -33,8 +33,16 @@ new_names = [name.replace(".", "") for name in new_names]
 raw.rename_channels(dict(zip(raw.ch_names, new_names)))
 seeg_xyz = vep_prepare.read_seeg_xyz(subject_dir)           # read from GARDEL file
 seeg_xyz_names = [label for label, _ in seeg_xyz]
-raw = raw.pick_channels(seeg_xyz_names)                     # check wether all GARDEL channels exist in the raw seeg file
 raw = raw.pick_types(meg=False, eeg=True, exclude="bads")
+try:
+    raw = raw.pick(seeg_xyz_names) # check wether all GARDEL channels exist in the raw seeg file
+except:
+    available_chs = set(raw.ch_names)
+    seeg_xyz_names_present = [ch for ch in seeg_xyz_names if ch in available_chs]
+    missing_chs = [ch for ch in seeg_xyz_names if ch not in available_chs]
+    if missing_chs:
+        print('Warning: missing GARDEL channels, skipping:', missing_chs)
+    raw = raw.pick(seeg_xyz_names_present, verbose=True)
 inv_gain_file = f'{subject_dir}/elec/gain_inv-square.vep.txt'       # read gain
 invgain = np.loadtxt(inv_gain_file)
 bip_gain_inv_minus, bip_xyz, bip_name = vep_prepare.bipolarize_gain_minus(invgain, seeg_xyz, seeg_xyz_names)
@@ -63,3 +71,23 @@ ch_names = [ "B1-2", "B2-3", "B4-5", "B5-6", "B6-7",
          "Im1-2", "Im3-4", "Im5-6", "Im6-7",
          "Ia1-2","Ia3-4", "Ia5-6", "Ia6-7",]
 plot_SEEG_timeseries(t, y, ch_names, bip.ch_names, scaleplt=0.0008, figsize=(20, 20)) # Plot all empirical time series
+
+# %%
+onset = 37.6*60
+offset = 41.05*60
+base_length = 0  # plot ts_on sec before and after
+start_idx = int((onset - base_length) * bip.info['sfreq'])
+end_idx = int((offset + base_length) * bip.info['sfreq'])
+
+y = bip.get_data()[:, start_idx:end_idx]
+t = bip.times[start_idx:end_idx]
+# ch_names = bip.ch_names 
+# ch_names = [ "B1-2", "B8-9", "TP6-7", "TP7-8",
+#          "A1-2", "A2-3", "A3-4", "A5-6", "A9-10", 
+#          "Ia3-4", "Ia5-6", "Ia6-7"]
+ch_names = ["TB'1-2", "B1-2", "B8-9", "TP1-2", "TP6-7", "TP7-8",
+         "A1-2", "A2-3", "A3-4", "A5-6", "A9-10", 
+         "Ia3-4", "Ia5-6", "Ia6-7"]
+plot_SEEG_timeseries(t, y, ch_names, bip.ch_names, scaleplt=0.0004, figsize=(20, 8)) # Plot all empirical time series
+
+# %%

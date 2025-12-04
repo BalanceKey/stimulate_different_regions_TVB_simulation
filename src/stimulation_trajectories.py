@@ -180,8 +180,8 @@ for i, stim_idx in enumerate(stimulation_indexes):
     post_stim_duration=30 if i==len(stimulation_indexes)-1 else 0   # only add post-stim duration for last stimulation
     ttavg = run_simulation(stimulation_parameters, init_conditions, dt, epileptors, con, coupl, heunint,
                             mon_tavg, bip_names, bip_gain_prior_norm, roi, 
-                            pre_stim_duration=8 if i==0 else (stimulation_onset_t - prev_stimulation_onset_t), 
-                            post_stim_duration=30 if i==len(stimulation_indexes)-1 else 0,
+                            pre_stim_duration=pre_stim_duration, 
+                            post_stim_duration=post_stim_duration,
                             plot=False)
 
     ttavg_all.append(ttavg)

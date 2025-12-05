@@ -18,10 +18,12 @@ roi = vep_prepare.read_vep_mrtrix_lut()
 patients = {1: 'sub-603cf699f88f', 2: 'sub-2ed87927ff76', 3: 'sub-0c7ab65949e1',
             4: 'sub-9c71d0dbd98f', 5: 'sub-4b4606a742bd'}
 
-pid = 3
+pid = 5
 plot = False
+fixed_EZ = False  # whether to use fixed EZ or not
 
 if pid == 3:
+    # Set up stimulation indexes
     # emp_stim_1 = 342
     # emp_stim_2 = emp_stim_1 + 1
     # emp_stim_3 = emp_stim_1 + 2
@@ -37,21 +39,29 @@ if pid == 3:
     # stimulation_indexes = [emp_stim_3, emp_stim_2, emp_stim_4, emp_stim_1, emp_stim_5]  # indices of the stimulations to run in sequence
     # stimulation_indexes = [emp_stim_4, emp_stim_1, emp_stim_3, emp_stim_2, emp_stim_5]  # indices of the stimulations to run in sequence
 elif pid == 5:
-    emp_stim_1 = 234
-    emp_stim_2 = 235
-    emp_stim_3 = 236
-    emp_stim_4 = 237
-    stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4]  # indices of the stimulations to run in sequence
+    stim_run = 4
+    # Set up stimulation indexes
+    if stim_run == 5:
+        emp_stim_1 = 234
+        emp_stim_2 = 235
+        emp_stim_3 = 236
+        emp_stim_4 = 237
+        stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4]  # indices of the stimulations to run in sequence
+    elif stim_run == 4:
+        emp_stim_1 = 190
+        emp_stim_2 = 191
+        emp_stim_3 = 192
+        emp_stim_4 = 193
+        stimulation_indexes = [emp_stim_1, emp_stim_2, emp_stim_3, emp_stim_4]  # indices of the stimulations to run in sequence
+    else:
+        print('No such stim_run for patient 5')   
 else:
     stimulation_indexes = [0]  # placeholder for other patients
 
-
-subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/patients/{patients[pid]}/vep'
-# subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/stimulated_patients/{patients[pid]}/vep'
-stimulation_data = f'~/MyProjects/Stimulation/Project_DBS_neural_fields/stimulation_data_manager_{patients[pid]}.csv'
-
-#%% Set up EZ 
-EZ = ['Right-Amygdala', 'Right-Hippocampus-anterior']  # EZ for patient 3
+# subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/patients/{patients[pid]}/vep'
+subject_dir = f'/Users/dollomab/MyProjects/Epinov_trial/stimulated_patients/{patients[pid]}/vep'
+stimulation_data = f'/Users/dollomab/MyProjects/Stimulation/Project_DBS_neural_fields/stimulation_data_manager_{patients[pid]}.csv'
+de_results = f'/Users/dollomab/MyProjects/Stimulation/stim_statistics_epilepsy/results/{patients[pid]}_diff_evolution_results_500_times.npz'
 
 # %% Load stimulation parameters
 df = pd.read_csv(stimulation_data)
@@ -141,20 +151,39 @@ n_regions = con.number_of_regions
 #%% Set up Epileptor model parameters
 epileptors = EpileptorStim(variables_of_interest=['x1', 'y1', 'z', 'm'])
 epileptors.r = np.array([0.0005])
-epileptors.r2 = np.ones(n_regions) * (0.002)#(0.0011)
+if pid == 3:
+    epileptors.r2 = np.ones(n_regions) * (0.002)#(0.0011)
+elif pid == 5:
+    epileptors.r2 = np.ones(n_regions) * (0.0008)
+else:
+    epileptors.r2 = np.ones(n_regions) * (0.002)
 epileptors.Istim = np.ones(n_regions) * (0.)
 epileptors.Ks = np.ones(n_regions) * (-3)
 epileptors.Kf = np.ones(n_regions) * (-0.22)  # ?
 epileptors.Kvf = np.ones(n_regions) * (-0.085)  # ?
-# epileptors.threshold = np.ones(len(roi)) * (10.)
-# Set up EZ network: here we convert x0 - > threshold by using the formula
-# threshold = exp^(-x0) - 2  (x0 values close to threshold for seizing)
-x0_vector = np.ones(len(roi)) * -2.5
-ez_idx = [roi.index(ez) for ez in EZ]
-x0_vector[ez_idx] = -1.65
-epileptors.x0 = np.ones(n_regions)*(-2.3)  #x0_vector close to critical threshold
-# epileptors.threshold = np.exp(-x0_vector) - 2.95 # TODO this is adjustable, how best to set it ?
-epileptors.threshold = 20 / (1 + np.exp(10*(x0_vector + 2.1))) + 1.13 # sigmoid function centred around 2.1
+# Set up EZ network
+if fixed_EZ:
+    if pid == 3:
+        EZ = ['Right-Amygdala', 'Right-Hippocampus-anterior']  # EZ for patient 3
+    elif pid == 5:
+        EZ = ['Right-Orbito-frontal-cortex']  # EZ for patient 5
+    else:
+        EZ = []
+    # here we convert x0 - > threshold by using the formula
+    # threshold = exp^(-x0) - 2  (x0 values close to threshold for seizing)
+    x0_vector = np.ones(len(roi)) * -2.5
+    ez_idx = [roi.index(ez) for ez in EZ]
+    x0_vector[ez_idx] = -1.65
+    epileptors.x0 = np.ones(n_regions)*(-2.3)  #x0_vector close to critical threshold
+    # epileptors.threshold = np.exp(-x0_vector) - 2.95 # TODO this is adjustable, how best to set it ?
+    epileptors.threshold = 20 / (1 + np.exp(10*(x0_vector + 2.1))) + 1.13 # sigmoid function centred around 2.1
+else:
+    epileptors.x0 = np.ones(n_regions)*(-2.3)  #x0_vector close to critical threshold
+    # Set up seizure threshold parameters from DE results
+    de_results_data = np.load(de_results, allow_pickle=True) 
+    de_parameters = de_results_data['parameters_all']
+    m_thresh_values = np.median(de_parameters, axis=0)  # median x0 values across 500 runs
+    epileptors.threshold = m_thresh_values # set thresholds from DE results
 assert np.all(epileptors.threshold > 0)  # check thresholds>0, otherwise seizure starts automatically
 
 # Make a loop over the stimulation_indexes
@@ -207,24 +236,23 @@ for i, stim_idx in enumerate(stimulation_indexes):
         plt.show()
 
 #%% Combine all three simulations together and plot the entire timeseries
-time1, tavg1 = ttavg_all[0][0]
-time2, tavg2 = ttavg_all[1][0]
-time3, tavg3 = ttavg_all[2][0]
-time4, tavg4 = ttavg_all[3][0]
-time5, tavg5 = ttavg_all[4][0]
+time, xtavg, ytavg, mtavg, ztavg = [], [], [], [], []
+for i in range(len(stimulation_indexes)):
+    time += list(ttavg_all[i][0][0] + (time[-1] if i>0 else 0))
+    xtavg += [ttavg_all[i][0][1][:, 0, :, 0].T]
+    ytavg += [ttavg_all[i][0][1][:, 1, :, 0].T]
+    mtavg += [ttavg_all[i][0][1][:, 3, :, 0].T]
+    ztavg += [ttavg_all[i][0][1][:, 2, :, 0].T]
+time = np.array(time)
+xtavg = np.concatenate(xtavg, axis=1)
+ytavg = np.concatenate(ytavg, axis=1)
+mtavg = np.concatenate(mtavg, axis=1)
+ztavg = np.concatenate(ztavg, axis=1)
 
-time = np.concatenate((time1, time2 + time1[-1], time3 + time1[-1] + time2[-1], 
-                       time4 + time1[-1] + time2[-1] + time3[-1], 
-                       time5 + time1[-1] + time2[-1] + time3[-1] + time4[-1]))
-xtavg = np.concatenate((tavg1[:, 0, :, 0].T, tavg2[:, 0, :, 0].T, tavg3[:, 0, :, 0].T, tavg4[:, 0, :, 0].T, tavg5[:, 0, :, 0].T), axis=1)
-ytavg = np.concatenate((tavg1[:, 1, :, 0].T, tavg2[:, 1, :, 0].T, tavg3[:, 1, :, 0].T, tavg4[:, 1, :, 0].T, tavg5[:, 1, :, 0].T), axis=1)
-mtavg = np.concatenate((tavg1[:, 3, :, 0].T, tavg2[:, 3, :, 0].T, tavg3[:, 3, :, 0].T, tavg4[:, 3, :, 0].T, tavg5[:, 3, :, 0].T), axis=1)
-ztavg = np.concatenate((tavg1[:, 2, :, 0].T, tavg2[:, 2, :, 0].T, tavg3[:, 2, :, 0].T, tavg4[:, 2, :, 0].T, tavg5[:, 2, :, 0].T), axis=1)
-
-
+idx_roi = roi.index('Right-Orbito-frontal-cortex')
 # idx_roi = roi.index('Right-Amygdala')
-idx_roi = roi.index('Right-Temporal-pole')
-idx_roi = roi.index('Right-Hippocampus-anterior')
+# idx_roi = roi.index('Right-Temporal-pole')
+# idx_roi = roi.index('Right-Hippocampus-anterior')
 n_subplots = 3
 f, axs = plt.subplots(n_subplots, 1, sharex='col', figsize=(20, 5))
 axs[0].plot(time, xtavg[idx_roi], color='purple', linewidth=2)
@@ -232,13 +260,13 @@ axs[0].plot(time, xtavg[idx_roi], color='purple', linewidth=2)
 axs[1].plot(time, ztavg[idx_roi], color='purple', linewidth=2)
 axs[2].plot(time, mtavg[idx_roi], color='purple', linewidth=2)
 axs[2].axhline(epileptors.threshold[idx_roi], 0, time[-1], color='black', linestyle='--')
-axs[2].set_ylim([0, 1.7])
+# axs[2].set_ylim([0, 1.7])
 axs[0].set_ylabel('x1', fontsize=25)
 axs[1].set_ylabel('z', fontsize=25)
 axs[2].set_ylabel('m', fontsize=25)
 axs[2].set_xlabel('Time (ms)', fontsize=25)
 # axs[4].plot(sim.stimulus.time[0], sim.stimulus.temporal_pattern[0] * sim.stimulus.spatial_pattern[idx_roi])
-plt.suptitle(f'{roi[idx_roi]} simulation {stimulation_indexes[0]}_{stimulation_indexes[1]}_{stimulation_indexes[2]}_{stimulation_indexes[3]}_{stimulation_indexes[4]}', fontsize=25)
+plt.suptitle(f'{roi[idx_roi]} simulation {"_".join(map(str, stimulation_indexes))}', fontsize=25)
 plt.tight_layout()
 plt.show()
 
@@ -249,7 +277,8 @@ for i in range(len(roi)):
 plt.yticks(np.arange(len(roi)), roi)
 plt.xlim([time[0], time[-1]])
 plt.ylim([-2, len(roi) + 1])
-plt.title(f'Stimulation order: {stimulation_indexes[0]} -> {stimulation_indexes[1]} -> {stimulation_indexes[2]} -> {stimulation_indexes[3]} -> {stimulation_indexes[4]}', fontsize=20)
+# plt.title(f'Stimulation order: {stimulation_indexes[0]} -> {stimulation_indexes[1]} -> {stimulation_indexes[2]} -> {stimulation_indexes[3]} -> {stimulation_indexes[4]}', fontsize=20)
+plt.title(f'Stimulation order: {" -> ".join(map(str, stimulation_indexes))}', fontsize=20)
 plt.show()
 
 # Save all these simulation results
